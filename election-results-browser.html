@@ -1,0 +1,488 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Election Results Browser</title>
+  <style>
+    :root {
+      --font-sans: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      --text-primary: #172033;
+      --text-secondary: #435066;
+      --text-muted: #7a8496;
+      --text-accent: #1a5fb4;
+      --surface-1: #f7f8fa;
+      --surface-2: #eef1f5;
+      --bg-accent: #eaf2ff;
+      --border: #d9dee7;
+      --border-strong: #b8c0cf;
+      --border-accent: #96bdf2;
+      --radius: 8px;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      background: #ffffff;
+      color: var(--text-primary);
+      font-family: var(--font-sans);
+    }
+
+    .sr-only {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+      border: 0;
+    }
+
+    .er-wrap {
+      width: min(1120px, calc(100% - 24px));
+      margin: 0 auto;
+      padding: 1.5rem 0;
+      font-family: var(--font-sans);
+    }
+
+    .er-title {
+      font-size: 12px;
+      font-weight: 500;
+      letter-spacing: 0.09em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      text-align: center;
+      margin: 0 0 1.25rem;
+    }
+
+    .tier-tabs {
+      display: flex;
+      gap: 6px;
+      justify-content: center;
+      flex-wrap: wrap;
+      margin-bottom: 0.9rem;
+    }
+
+    .tier-tab {
+      padding: 8px 16px;
+      border-radius: var(--radius);
+      border: 0.5px solid var(--border-strong);
+      background: var(--surface-1);
+      color: var(--text-secondary);
+      font-size: 13px;
+      cursor: pointer;
+      transition: all 0.12s;
+      font-family: inherit;
+    }
+
+    .tier-tab:hover,
+    .tier-tab:focus-visible {
+      background: var(--surface-2);
+      color: var(--text-primary);
+      outline: none;
+    }
+
+    .tier-tab.active {
+      background: #1a2e4a;
+      color: #e8edf4;
+      border-color: #1a2e4a;
+    }
+
+    .year-row {
+      display: flex;
+      gap: 5px;
+      justify-content: center;
+      flex-wrap: wrap;
+      margin-bottom: 0.5rem;
+    }
+
+    .year-pill {
+      padding: 4px 13px;
+      border-radius: 999px;
+      border: 0.5px solid var(--border);
+      background: transparent;
+      color: var(--text-muted);
+      font-size: 12px;
+      cursor: pointer;
+      transition: all 0.12s;
+      font-family: inherit;
+    }
+
+    .year-pill:hover,
+    .year-pill:focus-visible {
+      border-color: var(--border-strong);
+      color: var(--text-secondary);
+      outline: none;
+    }
+
+    .year-pill.active {
+      background: var(--bg-accent);
+      border-color: var(--border-accent);
+      color: var(--text-accent);
+    }
+
+    .er-subtitle {
+      font-size: 11px;
+      color: var(--text-muted);
+      text-align: center;
+      margin: 0.5rem 0 1.1rem;
+    }
+
+    .er-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      border-top: 0.5px solid var(--border);
+      border-left: 0.5px solid var(--border);
+    }
+
+    .er-cell {
+      border-right: 0.5px solid var(--border);
+      border-bottom: 0.5px solid var(--border);
+      padding: 10px;
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      min-width: 0;
+      min-height: 46px;
+    }
+
+    .er-cell.has-data {
+      cursor: pointer;
+    }
+
+    .er-cell.has-data:hover,
+    .er-cell.has-data:focus-visible {
+      background: var(--surface-1);
+      outline: none;
+    }
+
+    .flag {
+      font-size: 16px;
+      line-height: 1;
+      flex-shrink: 0;
+    }
+
+    .er-cell-inner {
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+    }
+
+    .country-name {
+      font-size: 12.5px;
+      color: var(--text-primary);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .er-cell.no-data .country-name {
+      color: var(--text-muted);
+    }
+
+    .er-cell.has-data .country-name {
+      color: var(--text-accent);
+    }
+
+    .winner-badge {
+      font-size: 10.5px;
+      color: var(--text-muted);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      margin-top: 1px;
+    }
+
+    .data-dot {
+      width: 5px;
+      height: 5px;
+      border-radius: 50%;
+      background: var(--text-accent);
+      margin-left: auto;
+      flex-shrink: 0;
+    }
+
+    .legend {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      justify-content: center;
+      margin-top: 1rem;
+      font-size: 11px;
+      color: var(--text-muted);
+      flex-wrap: wrap;
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .legend-dot {
+      width: 5px;
+      height: 5px;
+      border-radius: 50%;
+      background: var(--text-accent);
+    }
+
+    .eu-row {
+      grid-column: 1 / -1;
+      background: var(--surface-1);
+    }
+
+    .eu-row .country-name {
+      font-weight: 500;
+    }
+
+    @media (max-width: 900px) {
+      .er-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    }
+
+    @media (max-width: 640px) {
+      .er-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .tier-tab { flex: 1 1 calc(50% - 6px); }
+    }
+
+    @media (max-width: 420px) {
+      .er-grid { grid-template-columns: 1fr; }
+      .tier-tab { flex-basis: 100%; }
+    }
+  </style>
+</head>
+<body>
+  <main class="er-wrap">
+    <h1 class="sr-only">European election results browser — all countries and territories</h1>
+    <p class="er-title">Election results</p>
+    <div class="tier-tabs" id="tierTabs" aria-label="Election type"></div>
+    <div class="year-row" id="yearRow" aria-label="Election year"></div>
+    <p class="er-subtitle" id="subtitle"></p>
+    <div class="er-grid" id="countryGrid"></div>
+    <div class="legend" aria-label="Legend">
+      <div class="legend-item"><div class="legend-dot"></div> results available</div>
+      <div>— no election / no data</div>
+    </div>
+  </main>
+
+  <script>
+    const tiers = [
+      { id: 'national', label: 'National parliament' },
+      { id: 'regional', label: 'Regional parliament' },
+      { id: 'local',    label: 'Local elections' },
+      { id: 'eu',       label: 'European Union' },
+    ];
+
+    const elections = {
+      national: {
+        2024: {
+          Armenia:  { winner: 'Civil Contract', url: 'https://europeelects.eu/2026/06/03/national-parliament-election-in-armenia-2026/' },
+          Bulgaria: { winner: 'GERB', url: 'https://europeelects.eu/2026/04/14/election-dashboard-national-parliament-election-in-bulgaria-2026/' },
+          Cyprus:   { winner: 'DISY', url: 'https://europeelects.eu/2026/05/16/election-dashboard-national-parliament-election-in-cyprus-2026/' },
+          Hungary:  { winner: 'Fidesz', url: 'https://europeelects.eu/2026/04/04/national-parliament-election-in-hungary-2026/' },
+          Malta:    { winner: 'Labour', url: 'https://europeelects.eu/2026/05/16/election-dashboard-national-parliament-election-in-malta-2026/' },
+        },
+        2026: {
+          Armenia:  { winner: 'Civil Contract', url: 'https://europeelects.eu/2026/06/03/national-parliament-election-in-armenia-2026/' },
+          Bulgaria: { winner: 'GERB', url: 'https://europeelects.eu/2026/04/14/election-dashboard-national-parliament-election-in-bulgaria-2026/' },
+          Cyprus:   { winner: 'DISY', url: 'https://europeelects.eu/2026/05/16/election-dashboard-national-parliament-election-in-cyprus-2026/' },
+          Hungary:  { winner: 'Fidesz', url: 'https://europeelects.eu/2026/04/04/national-parliament-election-in-hungary-2026/' },
+          Malta:    { winner: 'Labour', url: 'https://europeelects.eu/2026/05/16/election-dashboard-national-parliament-election-in-malta-2026/' },
+        },
+      },
+      regional: {
+        2024: {},
+        2026: {},
+      },
+      local: {
+        2024: {},
+        2026: {},
+      },
+      eu: {
+        2024: {
+          'European Union': { winner: 'EPP (largest)', url: 'https://europeelects.eu/elections/results/european-union-election-results/' },
+        },
+        2026: {
+          'European Union': { winner: 'EPP (largest)', url: 'https://europeelects.eu/elections/results/european-union-election-results/' },
+        },
+      },
+    };
+
+    const countries = [
+      { name: 'Åland Islands',           flag: '🇦🇽' },
+      { name: 'Albania',                  flag: '🇦🇱' },
+      { name: 'Andorra',                  flag: '🇦🇩' },
+      { name: 'Armenia',                  flag: '🇦🇲' },
+      { name: 'Austria',                  flag: '🇦🇹' },
+      { name: 'Azerbaijan',               flag: '🇦🇿' },
+      { name: 'Belarus',                  flag: '🇧🇾' },
+      { name: 'Belgium',                  flag: '🇧🇪' },
+      { name: 'Bosnia and Herzegovina',   flag: '🇧🇦' },
+      { name: 'Bulgaria',                 flag: '🇧🇬' },
+      { name: 'Croatia',                  flag: '🇭🇷' },
+      { name: 'Cyprus',                   flag: '🇨🇾' },
+      { name: 'Czechia',                  flag: '🇨🇿' },
+      { name: 'Denmark',                  flag: '🇩🇰' },
+      { name: 'Estonia',                  flag: '🇪🇪' },
+      { name: 'Faroe Islands',            flag: '🇫🇴' },
+      { name: 'Finland',                  flag: '🇫🇮' },
+      { name: 'France',                   flag: '🇫🇷' },
+      { name: 'Georgia',                  flag: '🇬🇪' },
+      { name: 'Germany',                  flag: '🇩🇪' },
+      { name: 'Gibraltar',                flag: '🇬🇮' },
+      { name: 'Greece',                   flag: '🇬🇷' },
+      { name: 'Greenland',                flag: '🇬🇱' },
+      { name: 'Guernsey',                 flag: '🇬🇬' },
+      { name: 'Holy See',                 flag: '🇻🇦' },
+      { name: 'Hungary',                  flag: '🇭🇺' },
+      { name: 'Iceland',                  flag: '🇮🇸' },
+      { name: 'Isle of Man',              flag: '🇮🇲' },
+      { name: 'Ireland',                  flag: '🇮🇪' },
+      { name: 'Italy',                    flag: '🇮🇹' },
+      { name: 'Jersey',                   flag: '🇯🇪' },
+      { name: 'Kosovo',                   flag: '🇽🇰' },
+      { name: 'Latvia',                   flag: '🇱🇻' },
+      { name: 'Liechtenstein',            flag: '🇱🇮' },
+      { name: 'Lithuania',                flag: '🇱🇹' },
+      { name: 'Luxembourg',               flag: '🇱🇺' },
+      { name: 'Malta',                    flag: '🇲🇹' },
+      { name: 'Monaco',                   flag: '🇲🇨' },
+      { name: 'Montenegro',               flag: '🇲🇪' },
+      { name: 'Netherlands',              flag: '🇳🇱' },
+      { name: 'North Macedonia',          flag: '🇲🇰' },
+      { name: 'Norway',                   flag: '🇳🇴' },
+      { name: 'Poland',                   flag: '🇵🇱' },
+      { name: 'Portugal',                 flag: '🇵🇹' },
+      { name: 'Republic of Moldova',      flag: '🇲🇩' },
+      { name: 'Romania',                  flag: '🇷🇴' },
+      { name: 'Russian Federation',       flag: '🇷🇺' },
+      { name: 'San Marino',               flag: '🇸🇲' },
+      { name: 'Serbia',                   flag: '🇷🇸' },
+      { name: 'Slovakia',                 flag: '🇸🇰' },
+      { name: 'Slovenia',                 flag: '🇸🇮' },
+      { name: 'Spain',                    flag: '🇪🇸' },
+      { name: 'Svalbard and Jan Mayen',   flag: '🇸🇯' },
+      { name: 'Sweden',                   flag: '🇸🇪' },
+      { name: 'Switzerland',              flag: '🇨🇭' },
+      { name: 'Türkiye',                  flag: '🇹🇷' },
+      { name: 'Ukraine',                  flag: '🇺🇦' },
+      { name: 'United Kingdom',           flag: '🇬🇧' },
+    ];
+
+    const euEntry = { name: 'European Union', flag: '🇪🇺' };
+
+    let activeTier = 'national';
+    let activeYear = 2026;
+
+    function escapeHtml(value) {
+      return String(value)
+        .replaceAll('&', '&amp;')
+        .replaceAll('<', '&lt;')
+        .replaceAll('>', '&gt;')
+        .replaceAll('"', '&quot;')
+        .replaceAll("'", '&#039;');
+    }
+
+    function openLink(url) {
+      window.open(url, '_blank', 'noopener,noreferrer');
+    }
+
+    function sendPrompt(text) {
+      console.log(text);
+    }
+
+    function getYears(tier) {
+      return Object.keys(elections[tier]).map(Number).sort((a, b) => a - b);
+    }
+
+    function renderTabs() {
+      document.getElementById('tierTabs').innerHTML = tiers.map(t =>
+        `<button type="button" class="tier-tab${t.id === activeTier ? ' active' : ''}" onclick="setTier('${t.id}')" aria-pressed="${t.id === activeTier}">${escapeHtml(t.label)}</button>`
+      ).join('');
+    }
+
+    function renderYears() {
+      const years = getYears(activeTier);
+      document.getElementById('yearRow').innerHTML = years.map(y =>
+        `<button type="button" class="year-pill${y === activeYear ? ' active' : ''}" onclick="setYear(${y})" aria-pressed="${y === activeYear}">${y}</button>`
+      ).join('');
+    }
+
+    function renderSubtitle() {
+      const label = tiers.find(t => t.id === activeTier).label;
+      document.getElementById('subtitle').textContent = `${label} · ${activeYear}`;
+    }
+
+    function makeCell(c, result, extraClass = '') {
+      const safeName = escapeHtml(c.name);
+      const safeFlag = escapeHtml(c.flag);
+      const className = `er-cell ${result ? 'has-data' : 'no-data'}${extraClass}`;
+
+      if (result) {
+        const safeWinner = escapeHtml(result.winner);
+        const action = result.url
+          ? `onclick="openLink('${escapeHtml(result.url)}')" role="link" tabindex="0" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openLink('${escapeHtml(result.url)}')}"`
+          : `onclick="sendPrompt('Show me ${activeYear} ${activeTier} election results for ${safeName}')"`;
+
+        return `<div class="${className}" ${action}>
+          <span class="flag" aria-hidden="true">${safeFlag}</span>
+          <div class="er-cell-inner">
+            <span class="country-name">${safeName}</span>
+            <span class="winner-badge">${safeWinner}</span>
+          </div>
+          <div class="data-dot" aria-hidden="true"></div>
+        </div>`;
+      }
+
+      return `<div class="${className}">
+        <span class="flag" aria-hidden="true">${safeFlag}</span>
+        <div class="er-cell-inner">
+          <span class="country-name">${safeName}</span>
+        </div>
+      </div>`;
+    }
+
+    function renderGrid() {
+      const data = elections[activeTier][activeYear] || {};
+      const grid = document.getElementById('countryGrid');
+      let html = '';
+
+      if (activeTier === 'eu') {
+        html = makeCell(euEntry, data['European Union'], ' eu-row');
+      } else {
+        countries.forEach(c => {
+          html += makeCell(c, data[c.name], '');
+        });
+        const euResult = data['European Union'];
+        if (euResult) html += makeCell(euEntry, euResult, ' eu-row');
+      }
+
+      grid.innerHTML = html;
+      grid.style.gridTemplateColumns = activeTier === 'eu' ? '1fr' : '';
+    }
+
+    function setTier(id) {
+      activeTier = id;
+      const years = getYears(id);
+      if (!years.includes(activeYear)) activeYear = years[years.length - 1];
+      render();
+    }
+
+    function setYear(y) {
+      activeYear = y;
+      render();
+    }
+
+    function render() {
+      renderTabs();
+      renderYears();
+      renderSubtitle();
+      renderGrid();
+    }
+
+    render();
+  </script>
+</body>
+</html>
