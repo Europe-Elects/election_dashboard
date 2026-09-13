@@ -159,6 +159,16 @@
       outline: none;
     }
 
+    .er-empty-note {
+      grid-column: 1 / -1;
+      padding: 20px 10px;
+      text-align: center;
+      font-size: 12px;
+      color: var(--text-muted);
+      border-right: 0.5px solid var(--border);
+      border-bottom: 0.5px solid var(--border);
+    }
+
     .flag {
       font-size: 16px;
       line-height: 1;
@@ -194,6 +204,10 @@
       overflow: hidden;
       text-overflow: ellipsis;
       margin-top: 1px;
+    }
+
+    .winner-badge.pending {
+      font-style: italic;
     }
 
     .data-dot {
@@ -274,6 +288,13 @@
       { id: 'eu',       label: 'European Union' },
     ];
 
+    // For 'national' and 'eu' tiers, each entry is keyed by a country name that
+    // must match an entry in the `countries` list below (rendered as a fixed grid).
+    //
+    // For 'regional' and 'local' tiers, entries are keyed by any label you like
+    // (e.g. "Saxony-Anhalt (Germany)") and rendered dynamically — no fixed list
+    // needed, since sub-national units vary a lot by country. Give each one its
+    // own `flag` (use the national flag of the country it belongs to).
     const elections = {
       national: {
         2024: {},
@@ -284,12 +305,19 @@
           Cyprus:   { winner: 'DISY', url: 'https://europeelects.eu/2026/05/16/election-dashboard-national-parliament-election-in-cyprus-2026/' },
           Hungary:  { winner: 'TISZA', url: 'https://europeelects.eu/2026/04/04/national-parliament-election-in-hungary-2026/' },
           Malta:    { winner: 'Labour', url: 'https://europeelects.eu/2026/05/16/election-dashboard-national-parliament-election-in-malta-2026/' },
+          Sweden:   { winner: 'Results pending — vote is Sept 13', url: 'https://europeelects.eu/2026/09/13/sweden-national-parliament-election-2026/', pending: true },
         },
       },
       regional: {
         2024: {},
         2025: {},
-        2026: {},
+        2026: {
+          'Saxony-Anhalt (Germany)': {
+            winner: 'AfD — 43.8%',
+            url: 'https://europeelects.eu/2026/08/30/germany-regional-parliament-election-in-saxony-anhalt-2026/',
+            flag: '🇩🇪',
+          },
+        },
       },
       local: {
         2024: {},
@@ -413,11 +441,12 @@
 
     function makeCell(c, result, extraClass = '') {
       const safeName = escapeHtml(c.name);
-      const safeFlag = escapeHtml(c.flag);
+      const safeFlag = escapeHtml(c.flag || '🏳️');
       const className = `er-cell ${result ? 'has-data' : 'no-data'}${extraClass}`;
 
       if (result) {
-        const safeWinner = escapeHtml(result.winner);
+        const safeWinner = escapeHtml(result.winner || 'Details available');
+        const badgeClass = result.pending ? 'winner-badge pending' : 'winner-badge';
         const action = result.url
           ? `onclick="openLink('${escapeHtml(result.url)}')" role="link" tabindex="0" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openLink('${escapeHtml(result.url)}')}"`
           : `onclick="sendPrompt('Show me ${activeYear} ${activeTier} election results for ${safeName}')"`;
@@ -426,7 +455,7 @@
           <span class="flag" aria-hidden="true">${safeFlag}</span>
           <div class="er-cell-inner">
             <span class="country-name">${safeName}</span>
-            <span class="winner-badge">${safeWinner}</span>
+            <span class="${badgeClass}">${safeWinner}</span>
           </div>
           <div class="data-dot" aria-hidden="true"></div>
         </div>`;
@@ -447,6 +476,19 @@
 
       if (activeTier === 'eu') {
         html = makeCell(euEntry, data['European Union'], ' eu-row');
+      } else if (activeTier === 'regional' || activeTier === 'local') {
+        // Dynamic tiers: render whatever entries exist for this year, keyed by
+        // whatever label was used (e.g. "Saxony-Anhalt (Germany)"), rather than
+        // matching against the fixed `countries` list.
+        const labels = Object.keys(data);
+        if (labels.length === 0) {
+          html = `<div class="er-empty-note">No ${activeTier} elections logged for ${activeYear} yet.</div>`;
+        } else {
+          labels.forEach(label => {
+            const result = data[label];
+            html += makeCell({ name: label, flag: result.flag }, result, '');
+          });
+        }
       } else {
         countries.forEach(c => {
           html += makeCell(c, data[c.name], '');
