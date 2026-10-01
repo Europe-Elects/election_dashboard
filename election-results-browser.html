@@ -24,7 +24,7 @@
 
     body {
       margin: 0;
-      background: #f8f8f6;;
+      background: #f8f8f6;
       color: var(--text-primary);
       font-family: var(--font-sans);
     }
@@ -197,17 +197,13 @@
       color: var(--text-accent);
     }
 
-    .winner-badge {
+    .date-badge {
       font-size: 10.5px;
       color: var(--text-muted);
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
       margin-top: 1px;
-    }
-
-    .winner-badge.pending {
-      font-style: italic;
     }
 
     .data-dot {
@@ -288,24 +284,26 @@
       { id: 'eu',       label: 'European Union' },
     ];
 
+    // Each entry has a `date` (election day, without the year — the year comes
+    // from the year pill) and a `url`.
+    //
     // For 'national' and 'eu' tiers, each entry is keyed by a country name that
     // must match an entry in the `countries` list below (rendered as a fixed grid).
     //
     // For 'regional' and 'local' tiers, entries are keyed by any label you like
-    // (e.g. "Saxony-Anhalt (Germany)") and rendered dynamically — no fixed list
-    // needed, since sub-national units vary a lot by country. Give each one its
-    // own `flag` (use the national flag of the country it belongs to).
+    // (e.g. "Saxony-Anhalt (Germany)") and rendered dynamically. Give each one
+    // its own `flag` (use the national flag of the country it belongs to).
     const elections = {
       national: {
         2024: {},
         2025: {},
         2026: {
-          Armenia:  { winner: 'Civil Contract', url: 'https://europeelects.eu/2026/06/03/national-parliament-election-in-armenia-2026/' },
-          Bulgaria: { winner: 'Progressive Bulgaria', url: 'https://europeelects.eu/2026/04/14/election-dashboard-national-parliament-election-in-bulgaria-2026/' },
-          Cyprus:   { winner: 'DISY', url: 'https://europeelects.eu/2026/05/16/election-dashboard-national-parliament-election-in-cyprus-2026/' },
-          Hungary:  { winner: 'TISZA', url: 'https://europeelects.eu/2026/04/04/national-parliament-election-in-hungary-2026/' },
-          Malta:    { winner: 'Labour', url: 'https://europeelects.eu/2026/05/16/election-dashboard-national-parliament-election-in-malta-2026/' },
-          Sweden:   { winner: 'Results pending — vote is Sept 13', url: 'https://europeelects.eu/2026/09/13/sweden-national-parliament-election-2026/', pending: true },
+          Armenia:  { date: '7 June',     url: 'https://europeelects.eu/2026/06/03/national-parliament-election-in-armenia-2026/' },
+          Bulgaria: { date: '19 April',   url: 'https://europeelects.eu/2026/04/14/election-dashboard-national-parliament-election-in-bulgaria-2026/' },
+          Cyprus:   { date: '24 May',     url: 'https://europeelects.eu/2026/05/16/election-dashboard-national-parliament-election-in-cyprus-2026/' },
+          Hungary:  { date: '12 April',   url: 'https://europeelects.eu/2026/04/04/national-parliament-election-in-hungary-2026/' },
+          Malta:    { date: '30 May',     url: 'https://europeelects.eu/2026/05/16/election-dashboard-national-parliament-election-in-malta-2026/' },
+          Sweden:   { date: '13 September', url: 'https://europeelects.eu/2026/09/13/sweden-national-parliament-election-2026/' },
         },
       },
       regional: {
@@ -313,8 +311,18 @@
         2025: {},
         2026: {
           'Saxony-Anhalt (Germany)': {
-            winner: 'AfD — 43.8%',
+            date: '6 September',
             url: 'https://europeelects.eu/2026/08/30/germany-regional-parliament-election-in-saxony-anhalt-2026/',
+            flag: '🇩🇪',
+          },
+          'Mecklenburg-Vorpommern (Germany)': {
+            date: '20 September',
+            url: 'https://europeelects.eu/2026/09/20/regional-parliament-election-in-mecklenburg-vorpommern-2026/',
+            flag: '🇩🇪',
+          },
+          'Berlin (Germany)': {
+            date: '20 September',
+            url: 'https://europeelects.eu/2026/09/20/regional-parliament-election-in-berlin-2026/',
             flag: '🇩🇪',
           },
         },
@@ -326,10 +334,10 @@
       },
       eu: {
         2019: {
-          'European Union': { winner: 'EPP (largest)', url: 'https://europeelects.eu/ep2019/' },
+          'European Union': { date: '23–26 May', url: 'https://europeelects.eu/ep2019/' },
         },
         2024: {
-          'European Union': { winner: 'EPP (largest)', url: 'https://europeelects.eu/ep2024/' },
+          'European Union': { date: '6–9 June', url: 'https://europeelects.eu/ep2024/' },
         },
       },
     };
@@ -445,8 +453,7 @@
       const className = `er-cell ${result ? 'has-data' : 'no-data'}${extraClass}`;
 
       if (result) {
-        const safeWinner = escapeHtml(result.winner || 'Details available');
-        const badgeClass = result.pending ? 'winner-badge pending' : 'winner-badge';
+        const safeDate = escapeHtml(result.date || 'Date TBC');
         const action = result.url
           ? `onclick="openLink('${escapeHtml(result.url)}')" role="link" tabindex="0" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openLink('${escapeHtml(result.url)}')}"`
           : `onclick="sendPrompt('Show me ${activeYear} ${activeTier} election results for ${safeName}')"`;
@@ -455,7 +462,7 @@
           <span class="flag" aria-hidden="true">${safeFlag}</span>
           <div class="er-cell-inner">
             <span class="country-name">${safeName}</span>
-            <span class="${badgeClass}">${safeWinner}</span>
+            <span class="date-badge">${safeDate}</span>
           </div>
           <div class="data-dot" aria-hidden="true"></div>
         </div>`;
@@ -477,9 +484,6 @@
       if (activeTier === 'eu') {
         html = makeCell(euEntry, data['European Union'], ' eu-row');
       } else if (activeTier === 'regional' || activeTier === 'local') {
-        // Dynamic tiers: render whatever entries exist for this year, keyed by
-        // whatever label was used (e.g. "Saxony-Anhalt (Germany)"), rather than
-        // matching against the fixed `countries` list.
         const labels = Object.keys(data);
         if (labels.length === 0) {
           html = `<div class="er-empty-note">No ${activeTier} elections logged for ${activeYear} yet.</div>`;
